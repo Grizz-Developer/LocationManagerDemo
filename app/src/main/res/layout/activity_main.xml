@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/GPS"
+        android:text="GPS定位"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <Button
+        android:id="@+id/NET"
+        android:text="网络定位"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <Button
+        android:id="@+id/PASSIVE"
+        android:text="被动接受定位"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <TextView
+        android:id="@+id/type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="当前模式："
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <TextView
+        android:id="@+id/tv_latitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="纬度："
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <TextView
+        android:id="@+id/tv_longitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="经度："
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+    <TextView
+        android:id="@+id/tv_nowAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="当前位置："
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="25dp"/>
+
+</LinearLayout>
