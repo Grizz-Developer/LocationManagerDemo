@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "map-demo"
+rootProject.name = "LocationManagerDemo"
 include(":app")
  
