@@ -7,6 +7,16 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+    <Switch
+        android:id="@+id/continuous_update_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="持续更新位置"
+        android:checked="false"
+        android:layout_marginTop="50dp"
+        tools:ignore="UseSwitchCompatOrMaterialXml" />
+
     <Button
         android:id="@+id/GPS"
         android:text="GPS定位"

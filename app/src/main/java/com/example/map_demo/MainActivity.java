@@ -18,6 +18,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,6 +33,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private TextView lon,lat,nowAddress,type;
     private Button GPS, NET,PASSIVE;
     private Double longitude, latitude;
+    private Switch continuousUpdateSwitch;
+    private boolean isContinuousUpdateEnabled = false;
     private LocationManager locationManager;
 
     @Override
@@ -46,10 +50,34 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         NET.setOnClickListener(this);
         PASSIVE.setOnClickListener(this);
 
+        // 初始化LocationManager
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
         // 检查GPS权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            }, LOCATION_PERMISSION_REQUEST_CODE);
         }
+
+        // 设置 Switch 的监听器
+        continuousUpdateSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                isContinuousUpdateEnabled = isChecked;
+                if (isChecked) {
+                    Toast.makeText(MainActivity.this, "持续更新模式已开启", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "持续更新模式已关闭，获取一次位置后移除位置监听器。", Toast.LENGTH_SHORT).show();
+                    if (locationManager != null) {
+                        removeUpdates();
+                    }
+                }
+            }
+        });
+
     }
 
     @Override
@@ -68,7 +96,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     @SuppressLint("MissingPermission")
     @Override
     public void onClick(View v) {
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         int id = v.getId();
 
         // 初始化
@@ -77,9 +104,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         lat.setText("纬度：");
         lon.setText("经度：");
 
+        if (locationManager != null) {
+            removeUpdates();
+        }
+
         if (id == R.id.GPS) {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.removeUpdates(this);
                 startLocationUpdates(LocationManager.GPS_PROVIDER);
                 type.setText("当前模式：GPS");
             } else {
@@ -88,7 +118,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         } else if (id == R.id.NET) {
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.removeUpdates(this);
                 startLocationUpdates(LocationManager.NETWORK_PROVIDER);
                 type.setText("当前模式：NETWORK");
             } else {
@@ -96,7 +125,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             }
         } else if (id == R.id.PASSIVE) {
             if (locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER)) {
-                locationManager.removeUpdates(this);
                 startLocationUpdates(LocationManager.PASSIVE_PROVIDER);
                 type.setText("当前模式：PASSIVE");
             } else {
@@ -112,20 +140,20 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             locationManager.requestLocationUpdates(provider, 0, 0, this);
             Log.d(TAG, "位置开始更新 " + provider);
         } catch (SecurityException e) {
-            Log.e(TAG, "SecurityException requesting location updates: " + e.getMessage());
-            Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "请求位置更新时发生安全异常：" + e.getMessage());
+            Toast.makeText(this, "定位权限被拒绝！", Toast.LENGTH_SHORT).show();
         }
     }
 
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        Log.d(TAG, "Location changed: " + location.getLatitude() + ", " + location.getLongitude());
+        Log.d(TAG, "位置已更新: " + location.getLatitude() + ", " + location.getLongitude());
         latitude = location.getLatitude();
         longitude = location.getLongitude();
         lat.setText("纬度：" + latitude);
         lon.setText("经度：" + longitude);
-        Log.e(TAG, "纬度：" + latitude + " 经度：" + longitude);
+        Log.d(TAG, "纬度：" + latitude + " 经度：" + longitude);
         Toast.makeText(MainActivity.this, "定位成功！", Toast.LENGTH_SHORT).show();
 
         // 地理位置解析
@@ -134,25 +162,65 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             // 获取经纬度对于的位置
             // getFromLocation(纬度, 经度, 最多获取的位置数量)
             List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
-            // 得到第一个经纬度位置解析信息
+
             if (addresses != null && !addresses.isEmpty()) {
                 Address address = addresses.get(0);
-                // 获取到详细的当前位置
-                String info = address.getAddressLine(0) + // 获取国家名称
-                        address.getAddressLine(1) + // 获取省市县(区)
-                        address.getAddressLine(2);  // 获取镇号(地址名称)
-                nowAddress.setText("当前位置："+info);
-            }
-            else{
+
+                // 拼接详细的当前位置信息
+                StringBuilder fullAddress = new StringBuilder();
+                // 优先使用 getAddressLine(0)，它通常是格式化的完整地址
+                String info = address.getAddressLine(0);
+                if (info != null) {
+                    fullAddress.append(info);
+                } else {
+                    if (address.getCountryName() != null) {
+                        fullAddress.append(address.getCountryName());
+                    }
+                    if (address.getAdminArea() != null) { // 省
+                        if (fullAddress.length() > 0) fullAddress.append(", ");
+                        fullAddress.append(address.getAdminArea());
+                    }
+                    if (address.getLocality() != null) { // 市
+                        if (fullAddress.length() > 0) fullAddress.append(", ");
+                        fullAddress.append(address.getLocality());
+                    }
+                    if (address.getSubLocality() != null) { // 区/县
+                        if (fullAddress.length() > 0) fullAddress.append(", ");
+                        fullAddress.append(address.getSubLocality());
+                    }
+                    if (address.getThoroughfare() != null) { // 街道
+                        if (fullAddress.length() > 0) fullAddress.append(", ");
+                        fullAddress.append(address.getThoroughfare());
+                    }
+                    if (address.getSubThoroughfare() != null) { // 门牌号
+                        if (fullAddress.length() > 0) fullAddress.append(", ");
+                        fullAddress.append(address.getSubThoroughfare());
+                    }
+                    if (address.getFeatureName() != null && fullAddress.toString().isEmpty()) { // 如果以上都没有，尝试获取地标名称
+                        fullAddress.append(address.getFeatureName());
+                    }
+                }
+                if (fullAddress.length() > 0) {
+                    nowAddress.setText("当前位置：" + fullAddress.toString());
+                } else {
+                    nowAddress.setText("当前位置：无法解析详细地址");
+                }
+            } else {
                 nowAddress.setText("当前位置：获取位置信息失败");
             }
         } catch (IOException e) {
-            Log.e(TAG, "Geocoder exception: " + e.getMessage());
+            Log.e(TAG, "地理编码器异常: " + e.getMessage());
             e.printStackTrace();
             nowAddress.setText("当前位置：获取位置信息失败");
+            Toast.makeText(MainActivity.this, "地址解析失败: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
         }
-        // 移除位置管理器
-        locationManager.removeUpdates(this);
+        // 根据开关状态决定是否移除监听器
+        if (!isContinuousUpdateEnabled) { // 如果持续更新未开启 (即为单次获取模式)
+            removeUpdates();
+
+        } else {
+
+        }
     }
 
     @Override
@@ -170,6 +238,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         Log.d(TAG, "onProviderDisabled: " + provider);
     }
 
+    public void removeUpdates(){
+        if (locationManager != null) {
+            locationManager.removeUpdates(this);
+            Log.d(TAG, "位置监听器已移除");
+        }
+    }
+
     public void initview(){
         GPS = findViewById(R.id.GPS);
         NET = findViewById(R.id.NET);
@@ -178,14 +253,19 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         lat = findViewById(R.id.tv_latitude);
         lon = findViewById(R.id.tv_longitude);
         nowAddress = findViewById(R.id.tv_nowAddress);
+        continuousUpdateSwitch = findViewById(R.id.continuous_update_switch);
+        isContinuousUpdateEnabled = continuousUpdateSwitch.isChecked();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        removeUpdates(); // 在 Activity 暂停时移除监听器，避免后台不必要消耗
+    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (locationManager != null) {
-            locationManager.removeUpdates(this);
-        }
+        removeUpdates(); // 在 Activity 销毁时移除监听器
     }
 }
