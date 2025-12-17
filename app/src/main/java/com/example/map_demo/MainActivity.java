@@ -104,9 +104,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         lat.setText("纬度：");
         lon.setText("经度：");
 
-        if (locationManager != null) {
-            removeUpdates();
-        }
+        removeUpdates();
 
         if (id == R.id.GPS) {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
